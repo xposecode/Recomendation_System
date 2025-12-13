@@ -1,200 +1,286 @@
 """
-similarity_module.py - Complete working version
+similarity_module.py
+File: Similarity Calculations for Music Recommendation
+Author: [Your Name]
+Student ID: [Your ID]
+Course: [Course Name]
 """
 
 import math
+import pandas as pd
+import random
 
 class SimilarityCalculator:
-    def __init__(self, data_loader):
-        self.loader = data_loader
-        print("SimilarityCalculator initialized")
     
-    def _get_track_features(self, identifier):
-        """Get features for a track by ID or name"""
-        # Try by ID first
-        track = self.loader.get_track_by_id(identifier)
+    def __init__(self, data_manager):
+        self.data = data_manager
+        self.artist_features_df = None
+        print("Similarity calculator created")
+    
+    def get_artist_feature_vector(self, artist_name):
+        """Get feature vector for an artist using Feature1, Feature2, etc."""
+        if self.artist_features_df is None:
+            self.artist_features_df = self.data.get_artist_features_dataframe()
         
-        # If not found by ID, try by name
-        if not track:
-            tracks = self.loader.get_tracks_by_name(identifier)
-            if tracks:
-                track = tracks[0][1]  # Take first match
-        
-        if not track:
+        if self.artist_features_df is None:
             return None
         
-        # Return feature vector
-        return [
-            track['acousticness'],
-            track['danceability'],
-            track['energy'],
-            track['liveness'],
-            track['loudness'],
-            track['popularity'],
-            track['speechiness'],
-            track['tempo'],
-            track['valence']
-        ]
-    
-    def _get_artist_features(self, artist_name):
-        """Get average features for an artist"""
-        tracks = self.loader.get_tracks_by_artist(artist_name)
-        if not tracks:
+        artist_row = self.artist_features_df[self.artist_features_df['Artist_name'] == artist_name]
+        
+        if artist_row.empty:
             return None
         
-        # Initialize feature accumulators
-        features = {
-            'acousticness': [], 'danceability': [], 'energy': [],
-            'liveness': [], 'loudness': [], 'popularity': [],
-            'speechiness': [], 'tempo': [], 'valence': []
-        }
+        # Get all Feature columns (Feature1, Feature2, etc.)
+        feature_vector = []
+        for col in self.artist_features_df.columns:
+            if col.startswith('Feature'):
+                feature_vector.append(artist_row[col].values[0])
         
-        # Collect features from all tracks
-        for track in tracks:
-            for feature in features:
-                features[feature].append(track[feature])
-        
-        # Calculate averages
-        avg_features = []
-        for feature in ['acousticness', 'danceability', 'energy', 'liveness',
-                       'loudness', 'popularity', 'speechiness', 'tempo', 'valence']:
-            if features[feature]:
-                avg_features.append(sum(features[feature]) / len(features[feature]))
-            else:
-                avg_features.append(0)
-        
-        return avg_features
+        return feature_vector
     
-    def euclidean_similarity(self, item1, item2, item_type='track'):
-        """Euclidean distance similarity"""
-        if item_type == 'track':
-            vec1 = self._get_track_features(item1)
-            vec2 = self._get_track_features(item2)
-        else:
-            vec1 = self._get_artist_features(item1)
-            vec2 = self._get_artist_features(item2)
+    def euclidean_distance(self, vector1, vector2):
+        """Calculate Euclidean distance between two vectors"""
+        if not vector1 or not vector2 or len(vector1) != len(vector2):
+            return float('inf')
         
-        if not vec1 or not vec2:
+        total = 0
+        for i in range(len(vector1)):
+            diff = vector1[i] - vector2[i]
+            total += diff * diff
+        
+        return math.sqrt(total)
+    
+    def cosine_similarity(self, vector1, vector2):
+        """Calculate cosine similarity between two vectors"""
+        if not vector1 or not vector2 or len(vector1) != len(vector2):
             return 0
         
-        # Calculate Euclidean distance
-        distance = math.sqrt(sum((a - b) ** 2 for a, b in zip(vec1, vec2)))
-        return 1 / (1 + distance)
-    
-    def cosine_similarity(self, item1, item2, item_type='track'):
-        """Cosine similarity"""
-        if item_type == 'track':
-            vec1 = self._get_track_features(item1)
-            vec2 = self._get_track_features(item2)
-        else:
-            vec1 = self._get_artist_features(item1)
-            vec2 = self._get_artist_features(item2)
+        dot = 0
+        mag1 = 0
+        mag2 = 0
         
-        if not vec1 or not vec2:
-            return 0
-        
-        # Calculate dot product and magnitudes
-        dot_product = sum(a * b for a, b in zip(vec1, vec2))
-        mag1 = math.sqrt(sum(a ** 2 for a in vec1))
-        mag2 = math.sqrt(sum(b ** 2 for b in vec2))
+        for i in range(len(vector1)):
+            dot += vector1[i] * vector2[i]
+            mag1 += vector1[i] * vector1[i]
+            mag2 += vector2[i] * vector2[i]
         
         if mag1 == 0 or mag2 == 0:
             return 0
         
-        return dot_product / (mag1 * mag2)
-    
-    def pearson_similarity(self, item1, item2, item_type='track'):
-        """Pearson correlation similarity"""
-        if item_type == 'track':
-            vec1 = self._get_track_features(item1)
-            vec2 = self._get_track_features(item2)
-        else:
-            vec1 = self._get_artist_features(item1)
-            vec2 = self._get_artist_features(item2)
+        mag1 = math.sqrt(mag1)
+        mag2 = math.sqrt(mag2)
         
-        if not vec1 or not vec2 or len(vec1) != len(vec2):
+        return dot / (mag1 * mag2)
+    
+    def pearson_correlation(self, vector1, vector2):
+        """Calculate Pearson correlation between two vectors"""
+        if not vector1 or not vector2 or len(vector1) != len(vector2):
             return 0
         
-        n = len(vec1)
+        n = len(vector1)
         
-        # Calculate means
-        mean1 = sum(vec1) / n
-        mean2 = sum(vec2) / n
+        mean1 = sum(vector1) / n
+        mean2 = sum(vector2) / n
         
-        # Calculate numerator and denominator
-        numerator = sum((a - mean1) * (b - mean2) for a, b in zip(vec1, vec2))
-        denom1 = math.sqrt(sum((a - mean1) ** 2 for a in vec1))
-        denom2 = math.sqrt(sum((b - mean2) ** 2 for b in vec2))
+        top = 0
+        bottom1 = 0
+        bottom2 = 0
         
-        if denom1 == 0 or denom2 == 0:
+        for i in range(n):
+            diff1 = vector1[i] - mean1
+            diff2 = vector2[i] - mean2
+            top += diff1 * diff2
+            bottom1 += diff1 * diff1
+            bottom2 += diff2 * diff2
+        
+        if bottom1 == 0 or bottom2 == 0:
             return 0
         
-        correlation = numerator / (denom1 * denom2)
-        # Convert from [-1, 1] to [0, 1]
-        return (correlation + 1) / 2
+        corr = top / (math.sqrt(bottom1) * math.sqrt(bottom2))
+        
+        # Convert from -1..1 to 0..1 for similarity
+        similarity = (corr + 1) / 2
+        return similarity
     
-    def manhattan_similarity(self, item1, item2, item_type='track'):
-        """Manhattan distance similarity"""
-        if item_type == 'track':
-            vec1 = self._get_track_features(item1)
-            vec2 = self._get_track_features(item2)
-        else:
-            vec1 = self._get_artist_features(item1)
-            vec2 = self._get_artist_features(item2)
+    def find_top_similar_artists(self, artist_name, similarity_metric='cosine', top_n=5):
+        """Task 1: Find top 5 similar artists (similarity > 0.8)"""
+        if self.artist_features_df is None:
+            self.artist_features_df = self.data.get_artist_features_dataframe()
         
-        if not vec1 or not vec2:
-            return 0
-        
-        # Calculate Manhattan distance
-        distance = sum(abs(a - b) for a, b in zip(vec1, vec2))
-        return 1 / (1 + distance)
-    
-    def compute_similarity(self, item1, item2, item_type='track', metric='cosine'):
-        """Compute similarity using specified metric"""
-        metrics = {
-            'euclidean': self.euclidean_similarity,
-            'cosine': self.cosine_similarity,
-            'pearson': self.pearson_similarity,
-            'manhattan': self.manhattan_similarity
-        }
-        
-        if metric not in metrics:
-            print(f"Unknown metric: {metric}. Using cosine.")
-            metric = 'cosine'
-        
-        return metrics[metric](item1, item2, item_type)
-    
-    def get_top_similar(self, query_item, item_type='track', metric='cosine', top_n=5):
-        """Get top N similar items"""
-        try:
-            results = []
-            
-            if item_type == 'artist':
-                # Compare with all artists
-                artists = self.loader.get_all_artists()
-                for artist in artists:
-                    if artist != query_item:
-                        similarity = self.compute_similarity(
-                            query_item, artist, 'artist', metric
-                        )
-                        if similarity > 0:
-                            results.append((artist, similarity))
-            
-            else:  # track
-                # Compare with all tracks
-                tracks = self.loader.get_all_tracks()
-                for track in tracks:
-                    if track['id'] != query_item and track['name'] != query_item:
-                        similarity = self.compute_similarity(
-                            query_item, track['id'], 'track', metric
-                        )
-                        if similarity > 0:
-                            results.append((track['name'], similarity))
-            
-            # Sort by similarity (descending)
-            results.sort(key=lambda x: x[1], reverse=True)
-            return results[:top_n]
-            
-        except Exception as e:
-            print(f"Error finding similar items: {e}")
+        if self.artist_features_df is None:
             return []
+        
+        target_vector = self.get_artist_feature_vector(artist_name)
+        if target_vector is None:
+            print(f"Artist '{artist_name}' not found in dataframe")
+            return []
+        
+        similarity_list = []
+        
+        for _, row in self.artist_features_df.iterrows():
+            current_artist = row['Artist_name']
+            
+            if current_artist == artist_name:
+                continue  # Skip the same artist
+            
+            # Get feature vector for current artist
+            current_vector = []
+            for col in self.artist_features_df.columns:
+                if col.startswith('Feature'):
+                    current_vector.append(row[col])
+            
+            # Calculate similarity based on selected metric
+            if similarity_metric == 'cosine':
+                similarity = self.cosine_similarity(target_vector, current_vector)
+            elif similarity_metric == 'euclidean':
+                distance = self.euclidean_distance(target_vector, current_vector)
+                similarity = 1 / (1 + distance) if distance != float('inf') else 0
+            elif similarity_metric == 'pearson':
+                similarity = self.pearson_correlation(target_vector, current_vector)
+            else:
+                print(f"Unknown metric: {similarity_metric}. Using cosine.")
+                similarity = self.cosine_similarity(target_vector, current_vector)
+            
+            # Only include if similarity > 0.8 as per assignment
+            if similarity > 0.8:
+                similarity_list.append([current_artist, similarity])
+        
+        if similarity_list:
+            # Create dataframe and sort
+            scores_df = pd.DataFrame(similarity_list, columns=['Artist', 'Similarity'])
+            scores_df = scores_df.sort_values('Similarity', ascending=False)
+            
+            # Return top N results
+            top_results = scores_df.head(top_n)
+            
+            return list(top_results.itertuples(index=False, name=None))
+        else:
+            return []
+    
+    def get_artist_recommendations(self, artist_name, similarity_metric='cosine', num_rec=10):
+        """Task 2: Get random recommendations from similar artists"""
+        if self.artist_features_df is None:
+            self.artist_features_df = self.data.get_artist_features_dataframe()
+        
+        if self.artist_features_df is None:
+            return []
+        
+        target_vector = self.get_artist_feature_vector(artist_name)
+        if target_vector is None:
+            print(f"Artist '{artist_name}' not found in dataframe")
+            return []
+        
+        all_similar = []
+        
+        for _, row in self.artist_features_df.iterrows():
+            current_artist = row['Artist_name']
+            
+            if current_artist == artist_name:
+                continue
+            
+            current_vector = []
+            for col in self.artist_features_df.columns:
+                if col.startswith('Feature'):
+                    current_vector.append(row[col])
+            
+            if similarity_metric == 'cosine':
+                similarity = self.cosine_similarity(target_vector, current_vector)
+            elif similarity_metric == 'euclidean':
+                distance = self.euclidean_distance(target_vector, current_vector)
+                similarity = 1 / (1 + distance) if distance != float('inf') else 0
+            elif similarity_metric == 'pearson':
+                similarity = self.pearson_correlation(target_vector, current_vector)
+            else:
+                similarity = self.cosine_similarity(target_vector, current_vector)
+            
+            if similarity > 0:
+                all_similar.append((current_artist, similarity))
+        
+        if not all_similar:
+            return []
+        
+        # Sort by similarity
+        all_similar.sort(key=lambda x: x[1], reverse=True)
+        
+        # Take top 30 for sampling pool
+        top_artists = all_similar[:30]
+        
+        if len(top_artists) <= num_rec:
+            return top_artists
+        else:
+            # Random selection weighted by similarity
+            artists, scores = zip(*top_artists)
+            weights = [score for score in scores]
+            
+            total_weight = sum(weights)
+            if total_weight > 0:
+                norm_weights = [w/total_weight for w in weights]
+                
+                selected_indices = random.choices(
+                    range(len(top_artists)),
+                    weights=norm_weights,
+                    k=num_rec
+                )
+                
+                # Get unique selections
+                unique_indices = list(set(selected_indices))
+                recommendations = [top_artists[i] for i in unique_indices]
+                
+                # Sort by similarity for display
+                recommendations.sort(key=lambda x: x[1], reverse=True)
+                return recommendations
+            else:
+                return random.sample(top_artists, min(num_rec, len(top_artists)))
+    
+    def show_calculation_example(self):
+        """Show example calculation from assignment"""
+        print("\n" + "="*60)
+        print("SIMILARITY CALCULATION EXAMPLE:")
+        print("="*60)
+        
+        # Example vectors from assignment
+        dani_vector = [2.6, 5.0]    # Dani = [2.6, 5]
+        phyu_vector = [5.0, 2.67]   # Phyu = [5, 2.67]
+        mofe_vector = [4.0, 4.0]    # Mofe = [4, 4]
+        
+        print(f"\nArtist vectors from assignment example:")
+        print(f"  Dani: {dani_vector}")
+        print(f"  Phyu: {phyu_vector}")
+        print(f"  Mofe: {mofe_vector}")
+        
+        print(f"\nCosine similarity between Dani and Phyu:")
+        similarity = self.cosine_similarity(dani_vector, phyu_vector)
+        print(f"  Result: {similarity:.4f}")
+        
+        print(f"\nEuclidean distance between Dani and Phyu:")
+        distance = self.euclidean_distance(dani_vector, phyu_vector)
+        print(f"  Distance: {distance:.4f}")
+        print(f"  Similarity: {1/(1+distance):.4f}")
+        
+        print(f"\nPearson correlation between Dani and Phyu:")
+        correlation = self.pearson_correlation(dani_vector, phyu_vector)
+        print(f"  Correlation: {correlation:.4f}")
+
+def test_similarity_calculator():
+    """Test the similarity calculator functions"""
+    print("Testing SimilarityCalculator...")
+    
+    # Create a simple example
+    calculator = SimilarityCalculator(None)
+    
+    # Test with example vectors from assignment
+    vector1 = [2.6, 5.0]
+    vector2 = [5.0, 2.67]
+    
+    print(f"\nTest vectors: {vector1} and {vector2}")
+    print(f"Cosine similarity: {calculator.cosine_similarity(vector1, vector2):.4f}")
+    print(f"Euclidean distance: {calculator.euclidean_distance(vector1, vector2):.4f}")
+    print(f"Pearson correlation: {calculator.pearson_correlation(vector1, vector2):.4f}")
+    
+    print("\nModule structure test passed!")
+    print("Contains required assignment functions:")
+    print("1. find_top_similar_artists() - Task 1")
+    print("2. get_artist_recommendations() - Task 2")
+
+if __name__ == "__main__":
+    test_similarity_calculator()

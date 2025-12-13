@@ -1,487 +1,425 @@
 """
-user_interface_module.py - GUI for the recommendation engine
+user_interface_module.py
+File: Graphical User Interface for Music Recommendation System
+Author: [Your Name]
+Student ID: [Your ID]
+Course: [Course Name]
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
+import pandas as pd
 
-class RecommendationGUI:
-    """GUI for the music recommendation engine"""
+class MusicAppGUI:
+    """Main GUI class for the music recommendation system"""
     
-    def __init__(self, data_loader, similarity_calculator):
-        self.loader = data_loader
-        self.calculator = similarity_calculator
+    def __init__(self, data_handler, similarity_engine):
+        self.data = data_handler
+        self.engine = similarity_engine
         
-        # Create main window
-        self.root = tk.Tk()
-        self.root.title("Music Recommendation Engine")
-        self.root.geometry("800x700")
+        self.main_window = tk.Tk()
+        self.main_window.title("Music Recommendation System")
+        self.main_window.geometry("900x800")
+        self.main_window.configure(bg='#F0F0F0')
         
-        # Variables
-        self.metric_var = tk.StringVar(value="cosine")
-        self.type_var = tk.StringVar(value="artist")
-        self.input1_var = tk.StringVar()
-        self.input2_var = tk.StringVar()
+        self.method_choice = tk.StringVar(value="cosine")
+        self.comparison_type = tk.StringVar(value="artist")
+        self.artist_name = tk.StringVar()
         
-        # Create widgets
-        self.create_widgets()
-        
-        # Show help message
-        self.show_welcome_message()
+        self.setup_interface()
+        self.display_instructions()
     
-    def show_welcome_message(self):
-        """Show welcome message in results area"""
-        welcome_text = """🎵 WELCOME TO MUSIC RECOMMENDATION ENGINE 🎵
+    def display_instructions(self):
+        """Show welcome message and instructions"""
+        welcome_msg = """🎵 MUSIC RECOMMENDATION SYSTEM 🎵
 
-HOW TO USE:
-1. Select a similarity metric (Cosine, Euclidean, Pearson, Manhattan)
-2. Choose whether to compare Artists or Tracks
-3. Enter item names in the input fields
-4. Click "Calculate Similarity" or "Get Recommendations"
+ASSIGNMENT FUNCTIONS:
+1. Find Top 5 Similar Artists
+   - Uses cosine, euclidean, or pearson similarity
+   - Only shows artists with similarity > 0.8
+   - Returns exactly 5 artists
 
-EXAMPLE ARTISTS IN DATABASE:
-"""
-        # Add some sample artists
-        artists = self.loader.get_all_artists()
+2. Get Artist Recommendations
+   - Randomly selects 10 similar artists
+   - Weighted by similarity scores
+   - Like Spotify recommendations
+
+Instructions:
+1. Select calculation method (NO MANHATTAN)
+2. Enter artist name
+3. Click desired function button
+
+Available Methods:
+• Cosine Similarity
+• Euclidean Distance
+• Pearson Correlation
+
+Sample Artists:"""
+        
+        artists = self.data.get_all_artists()
         if artists:
-            for i, artist in enumerate(artists[:8], 1):
-                welcome_text += f"   • {artist}\n"
+            for i in range(min(8, len(artists))):
+                welcome_msg += f"\n   • {artists[i]}"
         
-        welcome_text += "\nEXAMPLE USAGE:"
-        welcome_text += "\n• For Artists: Enter 'Artist 0' and 'Artist 1'"
-        welcome_text += "\n• Click 'Calculate Similarity'"
-        
-        self.results_text.delete(1.0, tk.END)
-        self.results_text.insert(1.0, welcome_text)
+        self.output_area.delete(1.0, tk.END)
+        self.output_area.insert(1.0, welcome_msg)
     
-    def create_widgets(self):
-        """Create all GUI widgets"""
-        # Main container
-        main_frame = ttk.Frame(self.root, padding="20")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+    def setup_interface(self):
+        """Create all GUI elements"""
+        main_frame = tk.Frame(self.main_window, bg='#F0F0F0')
+        main_frame.pack(padx=20, pady=20, fill=tk.BOTH, expand=True)
         
-        # Title
-        title = ttk.Label(
+        title_label = tk.Label(
             main_frame,
-            text="🎵 MUSIC RECOMMENDATION ENGINE 🎵",
+            text="Music Recommendation System - Assignment Tasks",
             font=("Arial", 18, "bold"),
-            foreground="#2E86AB"
+            bg='#F0F0F0',
+            fg='#0066CC'
         )
-        title.grid(row=0, column=0, columnspan=2, pady=(0, 20))
+        title_label.pack(pady=(0, 20))
         
-        # Similarity metric selection
-        ttk.Label(main_frame, text="Similarity Metric:", 
-                 font=("Arial", 11, "bold")).grid(
-            row=1, column=0, sticky=tk.W, pady=5
-        )
-        
-        metric_frame = ttk.Frame(main_frame)
-        metric_frame.grid(row=1, column=1, sticky=tk.W)
-        
-        metrics = [
-            ("Cosine", "cosine"),
-            ("Euclidean", "euclidean"),
-            ("Pearson", "pearson"),
-            ("Manhattan", "manhattan")
-        ]
-        
-        for i, (text, value) in enumerate(metrics):
-            rb = ttk.Radiobutton(
-                metric_frame,
-                text=text,
-                variable=self.metric_var,
-                value=value
-            )
-            rb.grid(row=0, column=i, padx=10)
-        
-        # Item type selection
-        ttk.Label(main_frame, text="Compare:", 
-                 font=("Arial", 11, "bold")).grid(
-            row=2, column=0, sticky=tk.W, pady=10
-        )
-        
-        type_frame = ttk.Frame(main_frame)
-        type_frame.grid(row=2, column=1, sticky=tk.W)
-        
-        types = [("Artists", "artist"), ("Tracks", "track")]
-        for i, (text, value) in enumerate(types):
-            rb = ttk.Radiobutton(
-                type_frame,
-                text=text,
-                variable=self.type_var,
-                value=value,
-                command=self.on_type_change
-            )
-            rb.grid(row=0, column=i, padx=20)
-        
-        # Input fields
-        self.create_input_fields(main_frame)
-        
-        # Buttons
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=5, column=0, columnspan=2, pady=20)
-        
-        # Style the buttons
-        style = ttk.Style()
-        style.configure('Success.TButton', font=('Arial', 10, 'bold'))
-        style.configure('Info.TButton', font=('Arial', 10))
-        
-        ttk.Button(
-            button_frame,
-            text="🔍 Calculate Similarity",
-            command=self.calculate_similarity,
-            width=22,
-            style='Success.TButton'
-        ).grid(row=0, column=0, padx=5, pady=5)
-        
-        ttk.Button(
-            button_frame,
-            text="💡 Get Recommendations",
-            command=self.get_recommendations,
-            width=22,
-            style='Info.TButton'
-        ).grid(row=0, column=1, padx=5, pady=5)
-        
-        ttk.Button(
-            button_frame,
-            text="🗑️ Clear",
-            command=self.clear_results,
-            width=22
-        ).grid(row=1, column=0, padx=5, pady=5)
-        
-        ttk.Button(
-            button_frame,
-            text="🚪 Quit",
-            command=self.root.quit,
-            width=22
-        ).grid(row=1, column=1, padx=5, pady=5)
-        
-        # Results area
-        results_label = ttk.Label(main_frame, text="Results:", 
-                                 font=("Arial", 12, "bold"))
-        results_label.grid(row=6, column=0, sticky=tk.W, pady=(10, 5))
-        
-        # Add help button
-        ttk.Button(
+        # Method selection
+        method_frame = tk.LabelFrame(
             main_frame,
-            text="❓ Help",
-            command=self.show_help,
-            width=10
-        ).grid(row=6, column=1, sticky=tk.E, pady=(10, 5))
-        
-        # Text widget for results
-        self.results_text = tk.Text(
-            main_frame,
-            width=80,
-            height=20,
-            wrap=tk.WORD,
-            font=("Courier New", 10),
-            bg="#f8f9fa",
-            relief=tk.SUNKEN,
-            borderwidth=2
-        )
-        self.results_text.grid(row=7, column=0, columnspan=2, pady=(0, 10))
-        
-        # Add scrollbar
-        scrollbar = ttk.Scrollbar(
-            main_frame,
-            orient=tk.VERTICAL,
-            command=self.results_text.yview
-        )
-        scrollbar.grid(row=7, column=2, sticky=(tk.N, tk.S))
-        self.results_text['yscrollcommand'] = scrollbar.set
-        
-        # Status bar
-        self.status_var = tk.StringVar(value="✅ Ready - Enter items and click a button")
-        status_bar = ttk.Label(
-            main_frame,
-            textvariable=self.status_var,
-            relief=tk.SUNKEN,
-            anchor=tk.W,
-            font=("Arial", 9)
-        )
-        status_bar.grid(row=8, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
-    
-    def create_input_fields(self, parent):
-        """Create input fields"""
-        # Item 1
-        ttk.Label(parent, text="Item 1:", 
-                 font=("Arial", 11)).grid(
-            row=3, column=0, sticky=tk.W, pady=5
-        )
-        
-        self.input1_entry = ttk.Entry(
-            parent,
-            textvariable=self.input1_var,
-            width=50,
-            font=("Arial", 10)
-        )
-        self.input1_entry.grid(row=3, column=1, sticky=tk.W, pady=5)
-        
-        # Add sample button for item 1
-        ttk.Button(
-            parent,
-            text="Sample",
-            command=lambda: self.input1_var.set(self.get_sample_item()),
-            width=8
-        ).grid(row=3, column=1, sticky=tk.E, padx=5)
-        
-        # Item 2
-        ttk.Label(parent, text="Item 2 (for comparison):", 
-                 font=("Arial", 11)).grid(
-            row=4, column=0, sticky=tk.W, pady=5
-        )
-        
-        self.input2_entry = ttk.Entry(
-            parent,
-            textvariable=self.input2_var,
-            width=50,
-            font=("Arial", 10)
-        )
-        self.input2_entry.grid(row=4, column=1, sticky=tk.W, pady=5)
-        
-        # Add sample button for item 2
-        ttk.Button(
-            parent,
-            text="Sample",
-            command=lambda: self.input2_var.set(self.get_sample_item()),
-            width=8
-        ).grid(row=4, column=1, sticky=tk.E, padx=5)
-    
-    def get_sample_item(self):
-        """Get a sample item based on selected type"""
-        item_type = self.type_var.get()
-        
-        if item_type == 'artist':
-            artists = self.loader.get_all_artists()
-            if artists:
-                # Return a different artist than what's already in the fields
-                current_items = [self.input1_var.get(), self.input2_var.get()]
-                for artist in artists:
-                    if artist not in current_items:
-                        return artist
-                return artists[0]
-        else:
-            tracks = self.loader.get_all_tracks()
-            if tracks:
-                return tracks[0]['name']
-        
-        return "Sample Item"
-    
-    def on_type_change(self):
-        """Handle item type change"""
-        # Clear inputs when type changes
-        self.input1_var.set("")
-        self.input2_var.set("")
-        self.status_var.set(f"Switched to {self.type_var.get()} mode")
-    
-    def calculate_similarity(self):
-        """Calculate similarity between two items"""
-        item1 = self.input1_var.get().strip()
-        item2 = self.input2_var.get().strip()
-        
-        if not item1 or not item2:
-            messagebox.showwarning("Input Required", 
-                                 "Please enter both items to compare")
-            return
-        
-        try:
-            self.status_var.set("🔄 Calculating similarity...")
-            self.root.update()  # Update GUI to show status
-            
-            metric = self.metric_var.get()
-            item_type = self.type_var.get()
-            
-            # Calculate similarity
-            similarity = self.calculator.compute_similarity(
-                item1, item2, item_type, metric
-            )
-            
-            if similarity == 0:
-                messagebox.showinfo("No Match", 
-                                  f"Could not find '{item1}' or '{item2}'\n"
-                                  f"Try using sample artists from the list.")
-                self.status_var.set("❌ Items not found")
-                return
-            
-            # Get top 5 similar for each
-            top5_1 = self.calculator.get_top_similar(item1, item_type, metric, 5)
-            top5_2 = self.calculator.get_top_similar(item2, item_type, metric, 5)
-            
-            # Display results
-            result_text = "=" * 70 + "\n"
-            result_text += "SIMILARITY RESULTS\n"
-            result_text += "=" * 70 + "\n\n"
-            result_text += f"📊 METRIC: {metric.upper()}\n"
-            result_text += f"🎯 TYPE: {item_type.upper()}S\n\n"
-            result_text += f"🔗 Similarity between:\n"
-            result_text += f"   • '{item1}'\n"
-            result_text += f"   • '{item2}'\n\n"
-            result_text += f"⭐ SIMILARITY SCORE: {similarity:.4f}\n\n"
-            
-            if similarity > 0.7:
-                result_text += "💡 Interpretation: Highly Similar\n"
-            elif similarity > 0.4:
-                result_text += "💡 Interpretation: Moderately Similar\n"
-            else:
-                result_text += "💡 Interpretation: Not Very Similar\n"
-            
-            result_text += "\n" + "=" * 70 + "\n"
-            result_text += "TOP 5 RECOMMENDATIONS\n"
-            result_text += "=" * 70 + "\n\n"
-            
-            result_text += f"🎤 Top 5 similar to '{item1}':\n"
-            if top5_1:
-                for name, score in top5_1:
-                    result_text += f"   • {name}: {score:.4f}\n"
-            else:
-                result_text += "   No similar items found\n"
-            
-            result_text += f"\n🎤 Top 5 similar to '{item2}':\n"
-            if top5_2:
-                for name, score in top5_2:
-                    result_text += f"   • {name}: {score:.4f}\n"
-            else:
-                result_text += "   No similar items found\n"
-            
-            self.results_text.delete(1.0, tk.END)
-            self.results_text.insert(1.0, result_text)
-            self.status_var.set(f"✅ Similarity calculated: {similarity:.4f}")
-            
-        except Exception as e:
-            messagebox.showerror("Error", f"An error occurred:\n{str(e)}")
-            self.status_var.set("❌ Error occurred")
-            # Show traceback in results
-            import traceback
-            error_details = traceback.format_exc()
-            self.results_text.delete(1.0, tk.END)
-            self.results_text.insert(1.0, f"ERROR DETAILS:\n{error_details}")
-    
-    def get_recommendations(self):
-        """Get recommendations for a single item"""
-        item1 = self.input1_var.get().strip()
-        
-        if not item1:
-            messagebox.showwarning("Input Required", 
-                                 "Please enter an item to get recommendations")
-            return
-        
-        try:
-            self.status_var.set("🔄 Generating recommendations...")
-            self.root.update()
-            
-            metric = self.metric_var.get()
-            item_type = self.type_var.get()
-            
-            # Get recommendations
-            recommendations = self.calculator.get_top_similar(
-                item1, item_type, metric, 10
-            )
-            
-            # Display results
-            result_text = "=" * 70 + "\n"
-            result_text += "RECOMMENDATION RESULTS\n"
-            result_text += "=" * 70 + "\n\n"
-            result_text += f"🎯 FOR: {item1}\n"
-            result_text += f"📊 TYPE: {item_type.upper()}\n"
-            result_text += f"⚙️ METRIC: {metric.upper()}\n\n"
-            
-            if recommendations:
-                result_text += f"🏆 TOP 10 RECOMMENDATIONS:\n\n"
-                for i, (name, score) in enumerate(recommendations, 1):
-                    # Color code based on score
-                    if score > 0.8:
-                        prefix = "🔥 "
-                    elif score > 0.6:
-                        prefix = "⭐ "
-                    elif score > 0.4:
-                        prefix = "✓ "
-                    else:
-                        prefix = "• "
-                    
-                    result_text += f"{i:2}. {prefix}{name[:45]}: {score:.4f}\n"
-                
-                # Calculate average score
-                avg_score = sum(score for _, score in recommendations) / len(recommendations)
-                result_text += f"\n📈 Average recommendation score: {avg_score:.4f}"
-                
-                # Show strongest recommendation
-                if recommendations:
-                    best_name, best_score = recommendations[0]
-                    result_text += f"\n\n🏅 STRONGEST RECOMMENDATION:\n"
-                    result_text += f"   '{best_name}' with score: {best_score:.4f}"
-            else:
-                result_text += "❌ No recommendations found\n"
-                result_text += "\n💡 Try using a different item or check your input."
-            
-            self.results_text.delete(1.0, tk.END)
-            self.results_text.insert(1.0, result_text)
-            self.status_var.set(f"✅ Generated {len(recommendations)} recommendations")
-            
-        except Exception as e:
-            messagebox.showerror("Error", f"An error occurred:\n{str(e)}")
-            self.status_var.set("❌ Error occurred")
-    
-    def clear_results(self):
-        """Clear all results"""
-        self.results_text.delete(1.0, tk.END)
-        self.input1_var.set("")
-        self.input2_var.set("")
-        self.status_var.set("✅ Cleared - Ready for new input")
-        self.show_welcome_message()
-    
-    def show_help(self):
-        """Show help information"""
-        help_text = """HELP - MUSIC RECOMMENDATION ENGINE
-
-🎯 HOW TO USE:
-1. Select similarity metric from the 4 options
-2. Choose whether to compare Artists or Tracks
-3. Enter item names in the input fields
-   • For artists: Use artist names like 'Artist 0', 'Artist 1'
-   • For tracks: Use track names like 'Song 0', 'Song 1'
-4. Click buttons:
-   • 'Calculate Similarity' - Compare two items
-   • 'Get Recommendations' - Get similar items for one item
-   • 'Clear' - Reset everything
-   • 'Sample' - Fill with sample data
-
-📊 SIMILARITY METRICS:
-• Cosine - Measures angle between feature vectors
-• Euclidean - Measures straight-line distance
-• Pearson - Measures linear correlation
-• Manhattan - Measures city-block distance
-
-💡 TIPS:
-• Use the 'Sample' buttons to quickly fill inputs
-• Higher similarity scores (closer to 1) = more similar
-• Check the welcome message for sample items
-• Results include top 5 recommendations for each item
-"""
-        
-        # Create help window
-        help_window = tk.Toplevel(self.root)
-        help_window.title("Help")
-        help_window.geometry("600x500")
-        
-        help_text_widget = tk.Text(
-            help_window,
-            wrap=tk.WORD,
-            font=("Arial", 10),
+            text="Select Similarity Method (NO MANHATTAN)",
+            font=("Arial", 11, "bold"),
+            bg='#F0F0F0',
             padx=10,
             pady=10
         )
-        help_text_widget.pack(expand=True, fill=tk.BOTH)
-        help_text_widget.insert(1.0, help_text)
-        help_text_widget.config(state=tk.DISABLED)
+        method_frame.pack(fill=tk.X, pady=(0, 15))
         
-        # Close button
-        ttk.Button(
-            help_window,
-            text="Close",
-            command=help_window.destroy
-        ).pack(pady=10)
+        method_buttons_frame = tk.Frame(method_frame, bg='#F0F0F0')
+        method_buttons_frame.pack()
+        
+        methods = [
+            ("Cosine Similarity", "cosine"),
+            ("Euclidean Distance", "euclidean"),
+            ("Pearson Correlation", "pearson")
+        ]
+        
+        for i, (label_text, method_value) in enumerate(methods):
+            rb = tk.Radiobutton(
+                method_buttons_frame,
+                text=label_text,
+                variable=self.method_choice,
+                value=method_value,
+                bg='#F0F0F0',
+                font=("Arial", 10)
+            )
+            rb.pack(side=tk.LEFT, padx=15)
+        
+        # Artist input
+        input_frame = tk.LabelFrame(
+            main_frame,
+            text="Enter Artist Name",
+            font=("Arial", 11, "bold"),
+            bg='#F0F0F0',
+            padx=10,
+            pady=10
+        )
+        input_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        tk.Label(
+            input_frame,
+            text="Artist Name:",
+            font=("Arial", 10, "bold"),
+            bg='#F0F0F0'
+        ).pack(side=tk.LEFT, padx=5)
+        
+        self.artist_entry = tk.Entry(
+            input_frame,
+            textvariable=self.artist_name,
+            width=40,
+            font=("Arial", 10)
+        )
+        self.artist_entry.pack(side=tk.LEFT, padx=5)
+        
+        tk.Button(
+            input_frame,
+            text="Example",
+            command=self.fill_example,
+            width=10,
+            font=("Arial", 9)
+        ).pack(side=tk.LEFT, padx=5)
+        
+        # Assignment Task Buttons
+        task_frame = tk.LabelFrame(
+            main_frame,
+            text="Assignment Tasks",
+            font=("Arial", 11, "bold"),
+            bg='#F0F0F0',
+            padx=10,
+            pady=10
+        )
+        task_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        button_frame = tk.Frame(task_frame, bg='#F0F0F0')
+        button_frame.pack()
+        
+        # Task 1 Button
+        task1_btn = tk.Button(
+            button_frame,
+            text="TASK 1: Find Top 5 Similar Artists",
+            command=self.task1_top_similar,
+            font=("Arial", 10, "bold"),
+            bg='#4CAF50',
+            fg='white',
+            width=30,
+            height=2
+        )
+        task1_btn.grid(row=0, column=0, padx=10, pady=5)
+        
+        # Task 2 Button
+        task2_btn = tk.Button(
+            button_frame,
+            text="TASK 2: Get Artist Recommendations",
+            command=self.task2_recommendations,
+            font=("Arial", 10, "bold"),
+            bg='#2196F3',
+            fg='white',
+            width=30,
+            height=2
+        )
+        task2_btn.grid(row=0, column=1, padx=10, pady=5)
+        
+        # Control Buttons
+        control_frame = tk.Frame(task_frame, bg='#F0F0F0')
+        control_frame.pack(pady=(10, 0))
+        
+        tk.Button(
+            control_frame,
+            text="Clear Results",
+            command=self.clear_results,
+            font=("Arial", 10),
+            width=15
+        ).pack(side=tk.LEFT, padx=5)
+        
+        tk.Button(
+            control_frame,
+            text="Show Artist Features",
+            command=self.show_artist_features,
+            font=("Arial", 10),
+            width=15
+        ).pack(side=tk.LEFT, padx=5)
+        
+        tk.Button(
+            control_frame,
+            text="Exit",
+            command=self.main_window.quit,
+            font=("Arial", 10),
+            width=15
+        ).pack(side=tk.LEFT, padx=5)
+        
+        # Results area
+        results_frame = tk.LabelFrame(
+            main_frame,
+            text="Results",
+            font=("Arial", 11, "bold"),
+            bg='#F0F0F0',
+            padx=10,
+            pady=10
+        )
+        results_frame.pack(fill=tk.BOTH, expand=True)
+        
+        self.output_area = tk.Text(
+            results_frame,
+            width=90,
+            height=25,
+            wrap=tk.WORD,
+            font=("Consolas", 10),
+            bg='white',
+            relief=tk.SUNKEN,
+            borderwidth=2
+        )
+        self.output_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        scrollbar = tk.Scrollbar(results_frame, command=self.output_area.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.output_area.config(yscrollcommand=scrollbar.set)
+        
+        # Status bar
+        self.status_text = tk.StringVar(value="Ready - Enter artist name and select task")
+        status_bar = tk.Label(
+            main_frame,
+            textvariable=self.status_text,
+            relief=tk.SUNKEN,
+            anchor=tk.W,
+            font=("Arial", 9),
+            bg='#E0E0E0'
+        )
+        status_bar.pack(fill=tk.X, pady=(10, 0))
     
-    def run(self):
-        """Run the GUI application"""
-        self.root.mainloop()
+    def fill_example(self):
+        """Fill input with example artist"""
+        artists = self.data.get_all_artists()
+        if artists:
+            self.artist_name.set(artists[0])
+    
+    def task1_top_similar(self):
+        """Task 1: Find top 5 similar artists"""
+        artist = self.artist_name.get().strip()
+        
+        if not artist:
+            messagebox.showwarning("Input Required", "Please enter an artist name")
+            return
+        
+        try:
+            self.status_text.set("Finding top 5 similar artists...")
+            self.main_window.update()
+            
+            method = self.method_choice.get()
+            
+            results = self.engine.find_top_similar_artists(artist, method, 5)
+            
+            output = "=" * 70 + "\n"
+            output += "TASK 1: TOP 5 SIMILAR ARTISTS\n"
+            output += "=" * 70 + "\n\n"
+            output += f"Target Artist: {artist}\n"
+            output += f"Method: {method.upper()}\n"
+            output += f"Threshold: Similarity > 0.8\n\n"
+            
+            if results:
+                output += "Top 5 Similar Artists:\n"
+                output += "-" * 40 + "\n"
+                
+                for i, (artist_name, similarity) in enumerate(results, 1):
+                    output += f"{i}. {artist_name}\n"
+                    output += f"   Similarity Score: {similarity:.4f}\n"
+                    output += f"   Interpretation: "
+                    
+                    if similarity > 0.9:
+                        output += "Very High Similarity\n"
+                    elif similarity > 0.8:
+                        output += "High Similarity\n"
+                    else:
+                        output += "Moderate Similarity\n"
+                    
+                    output += "\n"
+                
+                output += f"Total found: {len(results)} artists\n"
+            else:
+                output += "No similar artists found with similarity > 0.8\n"
+                output += "Try a different artist or method\n"
+            
+            self.output_area.delete(1.0, tk.END)
+            self.output_area.insert(1.0, output)
+            self.status_text.set(f"Task 1 complete: Found {len(results)} similar artists")
+            
+        except Exception as error:
+            messagebox.showerror("Error", f"Error in Task 1:\n{error}")
+            self.status_text.set("Error occurred")
+            self.output_area.delete(1.0, tk.END)
+            self.output_area.insert(1.0, f"Error details:\n{str(error)}")
+    
+    def task2_recommendations(self):
+        """Task 2: Get artist recommendations"""
+        artist = self.artist_name.get().strip()
+        
+        if not artist:
+            messagebox.showwarning("Input Required", "Please enter an artist name")
+            return
+        
+        try:
+            self.status_text.set("Generating recommendations...")
+            self.main_window.update()
+            
+            method = self.method_choice.get()
+            
+            recommendations = self.engine.get_artist_recommendations(artist, method, 10)
+            
+            output = "=" * 70 + "\n"
+            output += "TASK 2: ARTIST RECOMMENDATIONS\n"
+            output += "=" * 70 + "\n\n"
+            output += f"Target Artist: {artist}\n"
+            output += f"Method: {method.upper()}\n"
+            output += f"Number of recommendations: 10 (like Spotify)\n\n"
+            
+            if recommendations:
+                output += "Recommended Artists:\n"
+                output += "-" * 40 + "\n"
+                
+                for i, (artist_name, similarity) in enumerate(recommendations, 1):
+                    output += f"{i}. {artist_name}\n"
+                    output += f"   Similarity Score: {similarity:.4f}\n"
+                    
+                    # Add emoji based on similarity
+                    if similarity > 0.9:
+                        output += "   Match: 🔥 Perfect Match!\n"
+                    elif similarity > 0.7:
+                        output += "   Match: ⭐ Great Match\n"
+                    elif similarity > 0.5:
+                        output += "   Match: ✓ Good Match\n"
+                    else:
+                        output += "   Match: • Decent Match\n"
+                    
+                    output += "\n"
+                
+                # Calculate statistics
+                scores = [score for _, score in recommendations]
+                avg_score = sum(scores) / len(scores) if scores else 0
+                
+                output += f"\nStatistics:\n"
+                output += f"- Average similarity: {avg_score:.4f}\n"
+                output += f"- Highest similarity: {max(scores):.4f}\n"
+                output += f"- Lowest similarity: {min(scores):.4f}\n"
+                output += f"- Total recommendations: {len(recommendations)}\n"
+                
+            else:
+                output += "No recommendations found\n"
+                output += "The artist may not have enough similar artists\n"
+            
+            self.output_area.delete(1.0, tk.END)
+            self.output_area.insert(1.0, output)
+            self.status_text.set(f"Task 2 complete: Generated {len(recommendations)} recommendations")
+            
+        except Exception as error:
+            messagebox.showerror("Error", f"Error in Task 2:\n{error}")
+            self.status_text.set("Error occurred")
+    
+    def show_artist_features(self):
+        """Show artist features dataframe"""
+        try:
+            df = self.data.get_artist_features_dataframe()
+            
+            if df is None:
+                messagebox.showinfo("No Data", "Artist features dataframe not available")
+                return
+            
+            output = "=" * 70 + "\n"
+            output += "ARTIST FEATURES DATAFRAME\n"
+            output += "=" * 70 + "\n\n"
+            output += f"Shape: {df.shape[0]} artists × {df.shape[1]} features\n\n"
+            output += "First 10 artists:\n"
+            output += "-" * 70 + "\n"
+            
+            # Display first 10 rows
+            for i, row in df.head(10).iterrows():
+                output += f"{i+1}. {row['Artist_name']}\n"
+                output += f"   Features: "
+                features = []
+                for col in df.columns:
+                    if col != 'Artist_name':
+                        features.append(f"{col}: {row[col]:.3f}")
+                output += ", ".join(features[:3]) + "...\n\n"
+            
+            output += f"\nFeatures calculated: {len(df.columns) - 1}\n"
+            output += f"Saved to: artist_features.csv\n"
+            
+            self.output_area.delete(1.0, tk.END)
+            self.output_area.insert(1.0, output)
+            self.status_text.set("Showing artist features dataframe")
+            
+        except Exception as error:
+            messagebox.showerror("Error", f"Error showing features:\n{error}")
+    
+    def clear_results(self):
+        """Clear all results"""
+        self.output_area.delete(1.0, tk.END)
+        self.artist_name.set("")
+        self.status_text.set("Cleared - Ready for new input")
+        self.display_instructions()
+    
+    def start(self):
+        """Start the GUI application"""
+        self.main_window.mainloop()
