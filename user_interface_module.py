@@ -71,7 +71,7 @@ Sample Artists:"""
         
         title_label = tk.Label(
             main_frame,
-            text="Music Recommendation System - Assignment Tasks",
+            text="Music Recommendation System",
             font=("Arial", 18, "bold"),
             bg='#F0F0F0',
             fg='#0066CC'
@@ -146,7 +146,7 @@ Sample Artists:"""
         # Assignment Task Buttons
         task_frame = tk.LabelFrame(
             main_frame,
-            text="Assignment Tasks",
+            text="Calculations",
             font=("Arial", 11, "bold"),
             bg='#F0F0F0',
             padx=10,
@@ -160,7 +160,7 @@ Sample Artists:"""
         # Task 1 Button
         task1_btn = tk.Button(
             button_frame,
-            text="TASK 1: Find Top 5 Similar Artists",
+            text="Find Top 5 Similar Artists",
             command=self.task1_top_similar,
             font=("Arial", 10, "bold"),
             bg='#4CAF50',
@@ -173,7 +173,7 @@ Sample Artists:"""
         # Task 2 Button
         task2_btn = tk.Button(
             button_frame,
-            text="TASK 2: Get Artist Recommendations",
+            text="Get Artist Recommendations",
             command=self.task2_recommendations,
             font=("Arial", 10, "bold"),
             bg='#2196F3',

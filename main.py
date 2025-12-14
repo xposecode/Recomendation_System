@@ -11,7 +11,7 @@ import os
 
 def main():
     print("=" * 70)
-    print("MUSIC RECOMMENDATION SYSTEM - ASSIGNMENT")
+    print("MUSIC RECOMMENDATION SYSTEM")
     print("=" * 70)
     
     try:
@@ -88,9 +88,9 @@ def main():
         # Launch GUI
         print("\n3. Launching GUI...")
         print("=" * 70)
-        print("ASSIGNMENT TASKS AVAILABLE:")
-        print("1. Task 1: Find Top 5 Similar Artists (similarity > 0.8)")
-        print("2. Task 2: Get Artist Recommendations (10 random from similar)")
+        print("Calculations")
+        print("Find Top 5 Similar Artists (similarity > 0.8)")
+        print("Get Artist Recommendations (10 random from similar)")
         print("=" * 70 + "\n")
         
         app = MusicAppGUI(loader, calculator)  # Changed from RecommendationGUI
