@@ -1,0 +1,90 @@
+---
+title: "Exploratory Data Analysis: Music Dataset for Recommendation Engine"
+author: "Student ID: C5056374"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    theme: united
+    highlight: tango
+---
+
+```{r}
+# ============================================
+# SETUP AND PACKAGE LOADING
+# ============================================
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  fig.width = 10,
+  fig.height = 6
+)
+
+# Load libraries silently
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(ggplot2)
+  library(tidyr)
+  library(knitr)
+  library(kableExtra)
+  library(gridExtra)
+})
+
+music_data <- read.csv("data.csv")
+
+head(music_data) %>%
+kable(caption = "Preview of the Music Dataset") %>%
+kable_styling(bootstrap_options = c("striped", "hover"),
+full_width = FALSE)
+
+# ============================================
+# DATA CLEANING PROCESS
+# ============================================
+
+cat("🧹 **DATA CLEANING PROCESS**\n\n")
+
+# Step 1: Select only required columns
+cat("**Step 1: Selecting Required Features**\n")
+required_cols <- c("acousticness", "artists", "danceability", "energy", "id",
+                   "liveness", "loudness", "name", "popularity", "speechiness",
+                   "tempo", "valence")
+
+# Keep only columns that exist in the data
+available_cols <- required_cols[required_cols %in% colnames(music_data)]
+music_data <- music_data[, available_cols]
+
+cat("- Selected", length(available_cols), "required features\n")
+
+# Step 2: Handle missing values
+cat("\n**Step 2: Handling Missing Values**\n")
+initial_count <- nrow(music_data)
+
+# Remove rows with missing values
+music_data_clean <- na.omit(music_data)
+cleaned_count <- nrow(music_data_clean)
+
+cat("- Initial observations:", initial_count, "\n")
+cat("- After removing NA values:", cleaned_count, "\n")
+cat("- Observations removed:", initial_count - cleaned_count, "\n")
+
+# Update dataset
+music_data <- music_data_clean
+
+# Step 3: Check for duplicates
+cat("\n**Step 3: Checking for Duplicates**\n")
+duplicate_rows <- sum(duplicated(music_data))
+cat("- Duplicate rows found:", duplicate_rows, "\n")
+
+if(duplicate_rows > 0) {
+  music_data <- music_data[!duplicated(music_data), ]
+  cat("- Duplicates removed\n")
+}
+
+cat("\n🎯 **CLEANING SUMMARY**\n")
+cat("- Final dataset:", nrow(music_data), "tracks ×", ncol(music_data), "features\n")
+cat("- Missing values: 0\n")
+cat("- Ready for analysis: ✅\n")

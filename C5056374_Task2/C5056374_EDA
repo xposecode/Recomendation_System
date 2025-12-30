@@ -1,0 +1,15 @@
+---
+title: "Exploratory Data Analysis: Music Dataset for Recommendation Engine"
+author: "Student ID: C5056374"
+date: "16 December 2025"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(ggplot2)
+knitr::opts_chunk$set(echo = FALSE, warning = TRUE, message = FALSE)
+
+# Load data
+music_data <- read.csv("data.csv")
+cat("✓ Loaded", nrow(music_data), "tracks\n")
