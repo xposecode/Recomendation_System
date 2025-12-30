@@ -45,7 +45,7 @@ ASSIGNMENT FUNCTIONS:
    - Like Spotify recommendations
 
 Instructions:
-1. Select calculation method (NO MANHATTAN)
+1. Select calculation method
 2. Enter artist name
 3. Click desired function button
 
@@ -81,7 +81,7 @@ Sample Artists:"""
         # Method selection
         method_frame = tk.LabelFrame(
             main_frame,
-            text="Select Similarity Method (NO MANHATTAN)",
+            text="Select Similarity Method",
             font=("Arial", 11, "bold"),
             bg='#F0F0F0',
             padx=10,
