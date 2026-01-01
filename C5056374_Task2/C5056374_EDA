@@ -1,15 +1,117 @@
 ---
-title: "Exploratory Data Analysis: Music Dataset for Recommendation Engine"
-author: "Student ID: C5056374"
-date: "16 December 2025"
-output: html_document
+title: "Exploratory Data Analysis - Music Dataset"
+author: "Your Name"
+date: "December 2025"
+output:
+  html_document:
+    df_print: paged
 ---
 
-```{r setup, include=FALSE}
-library(dplyr)
-library(ggplot2)
-knitr::opts_chunk$set(echo = FALSE, warning = TRUE, message = FALSE)
+## 1. Introduction
 
-# Load data
-music_data <- read.csv("data.csv")
-cat("✓ Loaded", nrow(music_data), "tracks\n")
+This report explores the music dataset provided by an online streaming company. The goal is to understand the data quality, find patterns, and help data analysts collect better data in the future.
+
+## 2. Data Import and Setup
+
+First, we load the necessary libraries and the dataset.
+
+```{r, message=FALSE, warning=FALSE}
+# Load required libraries
+library(tidyverse)   # For data manipulation and plotting
+library(ggplot2)     # For graphs
+library(dplyr)       # For data wrangling
+library(corrplot)    # For correlation heatmaps
+library(readr)       # For reading CSV files
+
+# Load the dataset
+data <- read_csv("data.csv")
+
+# Show first few rows
+head(data)
+
+# Show dimensions (rows x columns)
+cat("Dataset dimensions:", dim(data)[1], "rows and", dim(data)[2], "columns\n\n")
+
+# Show data types
+str(data)
+
+# Select only required columns
+required_features <- c("acousticness", "artists", "danceability", "energy", 
+                       "id", "liveness", "loudness", "name", "popularity", 
+                       "speechiness", "tempo", "valence")
+
+data_clean <- data %>% select(all_of(required_features))
+
+# Check for missing values
+missing_values <- sum(is.na(data_clean))
+cat("Total missing values in selected features:", missing_values, "\n")
+
+# Remove duplicates
+data_clean <- data_clean %>% distinct()
+cat("After removing duplicates:", nrow(data_clean), "rows remain\n")
+
+# Check data types
+sapply(data_clean, class)
+
+# Summary of numeric columns
+summary(data_clean %>% select_if(is.numeric))
+
+top_artists <- data_clean %>% 
+  count(artists) %>% 
+  arrange(desc(n)) %>% 
+  head(10)
+
+top_artists
+
+ggplot(data_clean, aes(x = popularity)) +
+  geom_histogram(bins = 30, fill = "blue", alpha = 0.7) +
+  labs(title = "Distribution of Song Popularity", 
+       x = "Popularity", 
+       y = "Count") +
+  theme_minimal()
+
+data_clean %>% 
+  mutate(energy_group = cut(energy, breaks = 4, 
+                            labels = c("Low", "Medium-Low", "Medium-High", "High"))) %>%
+  ggplot(aes(x = energy_group, y = popularity)) +
+  geom_boxplot(fill = "orange") +
+  labs(title = "Popularity vs. Energy Level",
+       x = "Energy Group",
+       y = "Popularity") +
+  theme_minimal()
+
+ggplot(data_clean, aes(x = danceability, y = valence)) +
+  geom_point(alpha = 0.5, color = "purple", size = 1.5) +
+  labs(title = "Danceability vs. Valence",
+       x = "Danceability",
+       y = "Valence") +
+  theme_minimal()
+
+ggplot(top_artists, aes(x = reorder(artists, n), y = n)) +
+  geom_bar(stat = "identity", fill = "darkgreen") +
+  coord_flip() +
+  labs(title = "Top 10 Artists by Number of Tracks",
+       x = "Artist",
+       y = "Number of Tracks") +
+  theme_minimal()
+
+# Select only numeric columns for correlation
+numeric_data <- data_clean %>% select_if(is.numeric)
+cor_matrix <- cor(numeric_data, use = "complete.obs")
+
+# Create correlation heatmap
+corrplot(cor_matrix, 
+         method = "color",
+         type = "upper",
+         tl.cex = 0.7,
+         title = "Correlation Between Music Features",
+         mar = c(0, 0, 2, 0))
+
+# Relationship between popularity and danceability
+ggplot(data_clean, aes(x = danceability, y = popularity)) +
+  geom_point(alpha = 0.3, color = "red") +
+  geom_smooth(method = "lm", color = "blue") +
+  labs(title = "Popularity vs Danceability",
+       x = "Danceability",
+       y = "Popularity") +
+  theme_minimal()
