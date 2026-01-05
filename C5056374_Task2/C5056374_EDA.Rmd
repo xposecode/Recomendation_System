@@ -1,6 +1,6 @@
 ---
 title: "Exploratory Data Analysis - Music Dataset"
-author: "Your Name"
+author: "C5056374"
 date: "December 2025"
 output:
   pdf_document:
@@ -15,23 +15,23 @@ This report explores the music dataset provided by an online streaming company. 
 
 ## 2. Data Import and Setup
 
-First, we load the necessary libraries and the dataset.
+First, we will load the necessary libraries and the dataset.
 
 ```{r, message=FALSE, warning=FALSE}
-# Load required libraries
+# Load required libraries for analysis
 library(tidyverse)   # For data manipulation and plotting
 library(ggplot2)     # For graphs
 library(dplyr)       # For data wrangling
 library(corrplot)    # For correlation heatmaps
 library(readr)       # For reading CSV files
 
-# Load the dataset
+# Loading the datasets
 data <- read_csv("data.csv")
 
 # Show first few rows
 head(data)
 
-# Show dimensions (rows x columns)
+# Show dimensions(rows x columns)
 cat("Dataset dimensions:", dim(data)[1], "rows and", dim(data)[2], "columns\n\n")
 
 # Show data types
@@ -44,11 +44,11 @@ required_features <- c("acousticness", "artists", "danceability", "energy",
 
 data_clean <- data %>% select(all_of(required_features))
 
-# Check for missing values
+# Check for the missing values
 missing_values <- sum(is.na(data_clean))
 cat("Total missing values in selected features:", missing_values, "\n")
 
-# Remove duplicates
+# Remove the duplicates
 data_clean <- data_clean %>% distinct()
 cat("After removing duplicates:", nrow(data_clean), "rows remain\n")
 
@@ -117,3 +117,14 @@ ggplot(data_clean, aes(x = danceability, y = popularity)) +
        x = "Danceability",
        y = "Popularity") +
   theme_minimal()
+
+```
+
+## Appendix: AI Transparency Declaration Statement  
+
+**AITS Descriptor:** 1 – No AI  
+
+I confirm that no Artificial Intelligence (AI) tools were used in any part of this activity.  
+All aspects of this EDA report — including data import, cleaning, analysis, visualisations, interpretation, and writing — were human-generated, created, edited, and developed by me.  
+
+*This statement is included as required by SHU’s Academic Conduct Policy.*
